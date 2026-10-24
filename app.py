@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, send_from_directory
 import os
 import io
+import base64
 import json
 import wave
 import numpy as np
@@ -8,7 +9,7 @@ from PIL import Image, ImageChops
 import piexif
 
 app = Flask(__name__)
-UPLOAD_FOLDER = "uploads"
+UPLOAD_FOLDER = "/tmp/uploads" if os.environ.get("VERCEL") else "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def ela_analysis(path, quality=95):
@@ -185,10 +186,9 @@ def check():
                   "voice": "Awaaz Jaanch", "video": "Video Jaanch"}.get(kind, kind)
     if kind == "document":
         score, flags, anomaly, diff = kaagaz_jaanch(path)
-        base, _ = os.path.splitext(file.filename)
-        ela_name = "ela_" + base + ".png"
-        diff.save(os.path.join(UPLOAD_FOLDER, ela_name))
-        ela_url = "/uploads/" + ela_name
+        ela_buffer = io.BytesIO()
+        diff.save(ela_buffer, "PNG")
+        ela_url = "data:image/png;base64," + base64.b64encode(ela_buffer.getvalue()).decode()
         info.append(f"ELA anomaly: {anomaly:.2f}")
         reasons = [(name, "") for name, _ in flags]
     elif kind == "photo":
