@@ -20,8 +20,8 @@ Flask, Pillow, piexif, NumPy, OpenCV, google-generativeai (Gemini API — Google
 Koi bhi hissa kisi doosre project se copy nahi hai.
 
 ## Team DHT
-- Ritik Raj (CSIT 2F) — Kaagaz Jaanch, project lead, pitch
-- Aniket Kumar (CSIT 2B) — Chehra/Awaaz Jaanch, live demo
+- Ritik Raj (CSIT 2F) — poora project build, pitch aur demo
+- Aniket Kumar (CSIT 2B) — team member
 
 ## Seemayein aur aage ka plan
 - Score ek likelihood hai, pakka saboot nahi — duniya ka koi tool 100% sahi nahi hota
