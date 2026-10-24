@@ -4,6 +4,11 @@ Ek hi jagah chaar jaanch: Kaagaz (document/photo), Chehra (deepfake photo),
 Awaaz (voice clone) aur Video. Har jaanch deti hai Trust Score (0-100),
 saboot (ELA map + kaaran) aur Hinglish salah.
 
+## 🔴 Live Demo
+**[sachcheck-dht4.vercel.app](https://sachcheck-dht4.vercel.app)** — bina install kiye,
+seedha browser me chala ke dekho. (Kaagaz aur Awaaz jaanch turant chalti hai;
+Chehra/Video ke liye server par Gemini key chahiye.)
+
 ## 🏆 Achievement
 **3rd Position — Hacktoberfest '26 Hack Day** (Abhyudaya Club × MLH),
 GL Bajaj Institute of Technology and Management, 24 October 2026.
