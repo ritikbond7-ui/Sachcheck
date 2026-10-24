@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SachCheck — Result</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Calibri, system-ui, sans-serif; background: #FBF7F0; margin: 0; color: #232B3A; }
+  header { background: #0D7A6E; color: #fff; padding: 22px 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 32px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 22px 14px 34px; }
+  .card { background: #fff; border-radius: 14px; padding: 26px 22px; box-shadow: 0 2px 10px rgba(35,43,58,.08); text-align: center; }
+  .kind { color: #5A677D; font-size: 17px; margin: 0 0 4px; }
+  .fname { color: #5A677D; font-size: 14px; margin: 0 0 14px; word-break: break-all; }
+  .score { font-size: 72px; font-weight: 800; line-height: 1; margin: 8px 0 4px; }
+  .score small { font-size: 26px; color: #5A677D; font-weight: 600; }
+  .band { display: inline-block; padding: 7px 18px; border-radius: 999px; font-weight: 700; font-size: 17px; color: #fff; margin: 8px 0 6px; }
+  .info { color: #5A677D; font-size: 15px; margin: 6px 0 0; }
+  .summary { font-size: 17px; margin: 14px 0 0; }
+  .error { color: #C0392B; font-size: 19px; font-weight: 700; margin: 12px 0; }
+  h3 { text-align: left; margin: 24px 0 10px; font-size: 20px; }
+  .reason { text-align: left; background: #FFFDF8; border-left: 5px solid #B96A00; border-radius: 8px; padding: 11px 14px; margin-bottom: 9px; font-size: 16px; }
+  .reason b { display: block; }
+  .reason span { color: #5A677D; }
+  .ela { max-width: 100%; border-radius: 10px; margin-top: 8px; }
+  .cap { color: #5A677D; font-size: 14px; margin-top: 5px; }
+  .back { display: inline-block; margin-top: 24px; background: #0D7A6E; color: #fff; text-decoration: none; padding: 12px 22px; border-radius: 9px; font-weight: 700; font-size: 17px; }
+  footer { text-align: center; color: #5A677D; font-size: 15px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<header><h1>🔍 SachCheck — Result</h1></header>
+<div class="wrap">
+  <div class="card">
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% else %}
+      <p class="kind">{{ kind_label }}</p>
+      <p class="fname">{{ filename }}</p>
+      {% set rang_hex = '#1F8A4C' if rang == 'green' else ('#B96A00' if rang == 'orange' else '#C0392B') %}
+      <div class="score" style="color: {{ rang_hex }}">{{ score }}<small>/100</small></div>
+      <div class="band" style="background: {{ rang_hex }}">{{ band }}</div>
+      {% for line in info %}<p class="info">{{ line }}</p>{% endfor %}
+      {% if summary %}<p class="summary">{{ summary }}</p>{% endif %}
+      {% if reasons %}
+        <h3>Kaaran</h3>
+        {% for title, detail in reasons %}
+          <div class="reason"><b>{{ title }}</b>{% if detail %}<span>{{ detail }}</span>{% endif %}</div>
+        {% endfor %}
+      {% endif %}
+      {% if ela_url %}
+        <img class="ela" src="{{ ela_url }}" alt="ELA map">
+        <p class="cap">ELA map — garam (chamkata) hissa = shak wala hissa</p>
+      {% endif %}
+    {% endif %}
+    <a class="back" href="/">← Dusri file check karo</a>
+  </div>
+  <footer>SachCheck ek madadgaar signal hai, kanooni saboot nahi.<br>Shak ho to <b>1930</b> (cyber helpline) pe report karo.</footer>
+</div>
+</body>
+</html>
