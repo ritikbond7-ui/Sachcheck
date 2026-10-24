@@ -4,6 +4,13 @@ Ek hi jagah chaar jaanch: Kaagaz (document/photo), Chehra (deepfake photo),
 Awaaz (voice clone) aur Video. Har jaanch deti hai Trust Score (0-100),
 saboot (ELA map + kaaran) aur Hinglish salah.
 
+## 🏆 Achievement
+**3rd Position — Hacktoberfest '26 Hack Day** (Abhyudaya Club × MLH),
+GL Bajaj Institute of Technology and Management, 24 October 2026.
+Team DHT — 17 finalist teams ke beech.
+
+![Hacktoberfest '26 Certificate — Ritik Raj](certificate.jpg)
+
 ## Chalane ka tareeka
 1. pip install -r requirements.txt
 2. Apni Gemini API key set karo (PowerShell: $env:GEMINI_API_KEY = "key")
