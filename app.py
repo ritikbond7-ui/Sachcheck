@@ -70,14 +70,14 @@ def kaagaz_jaanch(path):
     return max(0, score), flags, anomaly, diff
 
 def band(score):
-    if score >= 80:
-        return "Bharosa karo"
+    if score >= 70:
+        return "Bharosa karo — Trustworthy"
     if score >= 50:
-        return "Dhyaan do, dusre zariye se confirm karo"
-    return "Ruko, paise ya jaankari bilkul mat do"
+        return "Shak hai — Suspicious"
+    return "Bharosa mat karo — Not Trustworthy"
 
 def rang(score):
-    if score >= 80:
+    if score >= 70:
         return "green"
     if score >= 50:
         return "orange"
