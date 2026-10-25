@@ -4,6 +4,13 @@ Ek hi jagah chaar jaanch: Kaagaz (document/photo), Chehra (deepfake photo),
 Awaaz (voice clone) aur Video. Har jaanch deti hai Trust Score (0-100),
 saboot (ELA map + kaaran) aur Hinglish salah.
 
+## Problem
+WhatsApp aur social media par har roz fake documents, morphed photos, cloned
+awaaz aur edited video share hote hain — aur aam aadmi ke paas ye jaanchne ka
+koi asaan tareeka nahi hota ki file asli hai ya banayi gayi. Ek galat file par
+bharosa matlab fraud, galatfehmi ya nuksan. SachCheck isi problem ke liye hai:
+ek upload, chaar jaanch, aur saboot ke saath saaf jawab.
+
 ## 🔴 Live Demo
 **[sachcheck-dht4.vercel.app](https://sachcheck-dht4.vercel.app)** — bina install kiye,
 seedha browser me chala ke dekho. (Kaagaz aur Awaaz jaanch turant chalti hai;
@@ -18,7 +25,8 @@ Team DHT — 17 finalist teams ke beech.
 
 ## Chalane ka tareeka
 1. pip install -r requirements.txt
-2. Apni Gemini API key set karo (PowerShell: $env:GEMINI_API_KEY = "key")
+2. Apni Gemini API key set karo (PowerShell: $env:GEMINI_API_KEY = "key";
+   Linux/macOS: export GEMINI_API_KEY="key")
 3. python app.py — phir browser me http://127.0.0.1:5000
 
 ## Kaise kaam karta hai
@@ -27,7 +35,7 @@ Team DHT — 17 finalist teams ke beech.
   video se bikhre 3 frame, sabse kamzor frame ka score hi video ka score
 - Awaaz: WAV ki energy-variation jaanch (wave + NumPy) — flat awaaz = clone ka shak
 
-## Credits / Dependencies
+## Tech Stack / Dependencies
 Flask, Pillow, piexif, NumPy, OpenCV, google-generativeai (Gemini API — Google).
 Koi bhi hissa kisi doosre project se copy nahi hai.
 
