@@ -18,22 +18,33 @@ def ela_analysis(path, quality=95):
     original.save(buffer, "JPEG", quality=quality)
     buffer.seek(0)
     compressed = Image.open(buffer)
-    diff = ImageChops.difference(original, compressed)
-    diff = diff.convert("L").point(lambda x: min(255, x * 10))
-    arr = np.array(diff, dtype=float)
-    h, w = arr.shape
+    diff_img = ImageChops.difference(original, compressed)
+    # Stats ke liye RAW fark (bina x10 saturation ke) — text ke kinare
+    # saturated map par galat "hotspot" ban jate the.
+    raw = np.array(diff_img.convert("L"), dtype=float)
+    diff = diff_img.convert("L").point(lambda x: min(255, x * 10))
+    h, w = raw.shape
     bh, bw = h // 10, w // 10
+    if bh == 0 or bw == 0:
+        return {"median": 0.0, "hot_blocks": 0, "max_z": 0.0, "anomaly": 0.0}, diff
     blocks = []
     for i in range(10):
         for j in range(10):
-            block = arr[i*bh:(i+1)*bh, j*bw:(j+1)*bw]
+            block = raw[i*bh:(i+1)*bh, j*bw:(j+1)*bw]
             blocks.append(block.mean())
     blocks = np.array(blocks)
-    median = np.median(blocks)
-    if median == 0:
-        median = 1e-6
-    anomaly = float(np.max(np.abs(blocks - median)) / median)
-    return anomaly, diff
+    median = float(np.median(blocks))
+    mad = float(np.median(np.abs(blocks - median)))
+    sigma = 1.4826 * mad
+    if sigma < 1e-6:
+        sigma = max(median * 0.25, 1e-6)
+    zscores = (blocks - median) / sigma
+    hot = int(np.sum(zscores > 6.0))
+    max_z = float(np.max(zscores)) if zscores.size else 0.0
+    safe_median = median if median != 0 else 1e-6
+    anomaly = float(np.max(np.abs(blocks - median)) / safe_median)
+    stats = {"median": median, "hot_blocks": hot, "max_z": max_z, "anomaly": anomaly}
+    return stats, diff
 
 def metadata_flags(path):
     flags = []
@@ -48,26 +59,36 @@ def metadata_flags(path):
                 meta[name] = str(val)[:80]
         software = meta.get("Software", "")
         if any(s in software for s in ("Photoshop", "GIMP", "Canva", "Picsart", "Snapseed")):
-            flags.append((f"EDITING SOFTWARE KA NISHAN: '{software}' mila", 25))
+            flags.append((f"EDITING SOFTWARE KA NISHAN: '{software}' mila", 20))
         if not meta:
-            flags.append(("METADATA GAYAB: photo me koi camera jaankari nahi mili", 10))
+            # Scan, screenshot aur WhatsApp photo me EXIF hota hi nahi —
+            # ye aam baat hai, ispar number nahi katna chahiye.
+            flags.append(("METADATA NAHI MILA: scan/WhatsApp photo me ye aam hai — ispar number nahi kata", 0))
     except Exception:
-        flags.append(("METADATA PADH NAHI PAYE", 10))
+        flags.append(("METADATA PADH NAHI PAYE — ispar number nahi kata", 0))
     return flags
 
 def kaagaz_jaanch(path):
-    anomaly, diff = ela_analysis(path)
+    stats, diff = ela_analysis(path)
     flags = metadata_flags(path)
-    if anomaly > 0.50:
-        flags.append(("ELA HOTSPOT: ek hisse ka pattern baaki photo se bahut alag hai", 40))
-    elif anomaly > 0.30:
-        flags.append(("ELA SHAK: kuch hisso ka pattern alag hai", 20))
+    hot = stats["hot_blocks"]
+    max_z = stats["max_z"]
+    # Asli forensic fark: BADLA hua hissa aksar CHHOTA aur LOCALIZED hota
+    # hai (kuch hi block alag). Text/print ka pattern poori photo me FAILA
+    # hota hai — use galti se editing mat samjho (purani galti yahi thi,
+    # isiliye asli certificate bhi Suspicious aa jata tha).
+    if 1 <= hot <= 10 and max_z > 10:
+        flags.append(("ELA HOTSPOT: sirf ek chhote hisse ka compression pattern baaki kagaz se bahut alag hai — wahi hissa badla gaya ho sakta hai", 35))
+    elif 1 <= hot <= 10 and max_z > 6:
+        flags.append(("ELA SHAK: ek chhote hisse ka pattern thoda alag hai", 15))
+    elif hot > 10:
+        flags.append(("ELA PATTERN FAILA HUA: poore kagaz me compression ke nishan ghule hue hain — text/print par ye aam baat hai", 5))
     else:
-        flags.append(("ELA SAAF: poori photo ka pattern ek jaisa hai", 0))
+        flags.append(("ELA SAAF: poore kagaz ka pattern ek jaisa hai", 0))
     score = 100
     for _, penalty in flags:
         score -= penalty
-    return max(0, score), flags, anomaly, diff
+    return max(0, score), flags, stats["anomaly"], diff
 
 def band(score):
     if score >= 70:
@@ -83,38 +104,50 @@ def rang(score):
         return "orange"
     return "red"
 
+CHEHRA_MODELS = ["gemini-3-flash-preview", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
+
 def chehra_jaanch(path):
+    import time
     import google.generativeai as genai
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         return None, "GEMINI_API_KEY set nahi hai — Chehra Jaanch ke liye key chahiye"
-    try:
-        genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-3-flash-preview")
-        img = Image.open(path).convert("RGB")
-        img.thumbnail((1024, 1024))
-        prompt = ("Tum ek photo forensic checker ho. Photo ke in 6 signals ko EK-EK karke jaancho, "
-                  "aur HAR signal ke baare me ek alag flag likho — chahe wo signal saaf ho ya shak wala ho, "
-                  "khaali mat chhodo: "
-                  "1) Skin texture — pores, lines dikh rahe hain ya plastic jaisi smooth hai? "
-                  "2) Haath aur ungliyaan — ginati, jod, aakaar sahi hai ya bigde hue? "
-                  "3) Kaan aur unke kinare — shape, jod, symmetry sahi hai? "
-                  "4) Aankhen aur chashma — reflection, frame ka jod, symmetry sahi hai? "
-                  "5) Background — warping, distortion, text ya cheezein bigdi hui hain? "
-                  "6) Lighting aur shadow — chehre aur background ki roshni match karti hai? "
-                  "YAAD RAKHO: webcam ya phone photo me natural noise, halki blur aur JPEG compression NORMAL hai — "
-                  "inhe AI ka nishan mat samajhna. Score sirf tab kam karo jab saaf AI artifact dikhe. "
-                  "Score ka scale: koi AI nishan nahi mila to 85-95; halka shak ho to 60-84; "
-                  "saaf AI nishan dikhe to 40 se neeche; poori tarah AI-generated lage to 20 se neeche. "
-                  "Sirf JSON do: {\"score\": 0-100, \"summary\": \"2 line me detail faisla\", "
-                  "\"flags\": [\"Signal ka naam: kya dekha, detail me (zyada se zyada 2 chhoti line) — kam se kam 6 flags, har signal ek\"]}")
-        resp = model.generate_content([prompt, img],
-                                      generation_config={"max_output_tokens": 900},
-                                      request_options={"timeout": 60})
-        txt = resp.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(txt), None
-    except Exception as e:
-        return None, f"Gemini check fail hua ({type(e).__name__}) — net ya quota check karo"
+    genai.configure(api_key=key)
+    img = Image.open(path).convert("RGB")
+    img.thumbnail((1024, 1024))
+    prompt = ("Tum ek photo forensic checker ho. Photo ke in 6 signals ko EK-EK karke jaancho, "
+              "aur HAR signal ke baare me ek alag flag likho — chahe wo signal saaf ho ya shak wala ho, "
+              "khaali mat chhodo: "
+              "1) Skin texture — pores, lines dikh rahe hain ya plastic jaisi smooth hai? "
+              "2) Haath aur ungliyaan — ginati, jod, aakaar sahi hai ya bigde hue? "
+              "3) Kaan aur unke kinare — shape, jod, symmetry sahi hai? "
+              "4) Aankhen aur chashma — reflection, frame ka jod, symmetry sahi hai? "
+              "5) Background — warping, distortion, text ya cheezein bigdi hui hain? "
+              "6) Lighting aur shadow — chehre aur background ki roshni match karti hai? "
+              "YAAD RAKHO: webcam ya phone photo me natural noise, halki blur aur JPEG compression NORMAL hai — "
+              "inhe AI ka nishan mat samajhna. Score sirf tab kam karo jab saaf AI artifact dikhe. "
+              "Score ka scale: koi AI nishan nahi mila to 85-95; halka shak ho to 60-84; "
+              "saaf AI nishan dikhe to 40 se neeche; poori tarah AI-generated lage to 20 se neeche. "
+              "Sirf JSON do: {\"score\": 0-100, \"summary\": \"2 line me detail faisla\", "
+              "\"flags\": [\"Signal ka naam: kya dekha, detail me (zyada se zyada 2 chhoti line) — kam se kam 6 flags, har signal ek\"]}")
+    # Ek hi model par atke rehna purani galti thi: us model ka free quota
+    # khatm hote hi pura Chehra fail ho jata tha. Ab chain hai — ek model
+    # quota/busy de to agla apne aap try hota hai, har model 2 baar.
+    last_err = ""
+    for name in CHEHRA_MODELS:
+        for attempt in range(2):
+            try:
+                model = genai.GenerativeModel(name)
+                resp = model.generate_content([prompt, img],
+                                              generation_config={"max_output_tokens": 900},
+                                              request_options={"timeout": 40})
+                txt = resp.text.replace("```json", "").replace("```", "").strip()
+                return json.loads(txt), None
+            except Exception as e:
+                last_err = f"{name}: {type(e).__name__}"
+                time.sleep(1.5)
+    return None, ("Gemini ke teeno model abhi quota/busy par atke hain — thodi der baad phir try karo "
+                  f"(aakhri error: {last_err})")
 
 def video_frames(path, max_frames=3):
     import cv2
@@ -208,17 +241,21 @@ def check():
             with ThreadPoolExecutor(max_workers=len(frames)) as pool:
                 results = list(pool.map(chehra_jaanch, frames))
             scores = []
-            all_flags = []
+            worst = None
             for data, err in results:
                 if err:
                     error = err
                     break
                 scores.append(data.get("score", 50))
-                all_flags += data.get("flags", [])
+                if worst is None or data.get("score", 50) < worst.get("score", 50):
+                    worst = data
             if not error:
-                score = min(scores)
-                info.append(f"{len(frames)} frame (poori video se bikhre hue) ek saath check kiye — sabse kamzor frame ka score hi video ka score hai")
-                reasons = [(flag, "") for flag in all_flags]
+                # Ek kharab/blur frame poori video ko na dubaye — score
+                # beech wala (median) frame; saboot sabse kamzor frame ke.
+                ordered = sorted(scores)
+                score = ordered[len(ordered) // 2]
+                info.append(f"{len(frames)} frame (poori video se bikhre hue) check kiye — video ka score beech wala (median) frame hai, saboot sabse kamzor frame ke hain")
+                reasons = [(flag, "") for flag in worst.get("flags", [])]
     elif kind == "voice":
         data, err = awaaz_jaanch(path)
         if err:
